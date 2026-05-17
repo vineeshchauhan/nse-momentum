@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Recurse C:\\\\dev\\\\nse-momentum | Where-Object { !$_.PSIsContainer } | Select-Object -ExpandProperty FullName)",
+      "WebSearch",
+      "Bash(pip install *)",
+      "Bash(python *)",
+      "Bash(Start-Sleep -Seconds 20)",
+      "Bash(Get-Content \"C:\\\\Users\\\\Vini\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--dev-nse-momentum\\\\d1a54a51-cb5b-4cc4-99cc-6a2d720229ee\\\\tasks\\\\bgu5s42b1.output\")",
+      "Bash(Select-Object -Last 40)"
+    ]
+  }
+}

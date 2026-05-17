@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: Arial, sans-serif; font-size: 14px; color: #222; background: #f9f9f9; margin: 0; padding: 20px; }
+  .container { max-width: 860px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+  .header { background: #0d1b2a; color: #fff; padding: 24px 32px; }
+  .header h1 { margin: 0; font-size: 22px; }
+  .header p  { margin: 6px 0 0; color: #aaa; font-size: 13px; }
+  .body { padding: 24px 32px; }
+  .section-title { font-size: 16px; font-weight: bold; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 2px solid #eee; }
+  .changes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 8px; }
+  .change-box { border-radius: 6px; padding: 16px; }
+  .entry-box { background: #e8f5e9; border-left: 4px solid #2e7d32; }
+  .exit-box  { background: #ffebee; border-left: 4px solid #c62828; }
+  .change-box h3 { margin: 0 0 10px; font-size: 14px; }
+  .change-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.07); font-size: 13px; }
+  .change-item:last-child { border-bottom: none; }
+  .sym { font-weight: bold; }
+  .ret-pos { color: #2e7d32; font-weight: bold; }
+  .ret-neg { color: #c62828; font-weight: bold; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { background: #0d1b2a; color: #fff; padding: 10px 12px; text-align: left; font-size: 13px; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; font-size: 13px; }
+  .row-entry { background: #f1f8f1; }
+  .row-exit  { background: #fff5f5; }
+  .row-cont  { background: #fff; }
+  .badge-entry { display:inline-block; background:#2e7d32; color:#fff; border-radius:4px; padding:2px 7px; font-size:11px; }
+  .badge-exit  { display:inline-block; background:#c62828; color:#fff; border-radius:4px; padding:2px 7px; font-size:11px; }
+  .badge-cont  { display:inline-block; background:#546e7a; color:#fff; border-radius:4px; padding:2px 7px; font-size:11px; }
+  .rank-up   { color: #2e7d32; font-weight: bold; }
+  .rank-down { color: #c62828; font-weight: bold; }
+  .footer { padding: 16px 32px; background: #f4f4f4; color: #888; font-size: 12px; border-top: 1px solid #e0e0e0; }
+  .disclaimer { font-size: 11px; color: #aaa; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Weekly Momentum Portfolio — Week of {{ week_start }}</h1>
+    <p>Nifty 500 · Top 30 by 1-Month Return · Generated {{ generated_at }}</p>
+  </div>
+  <div class="body">
+
+    <!-- SECTION 1: Changes -->
+    <div class="section-title">Section 1 — This Week's Changes</div>
+    <div class="changes-grid">
+      <div class="change-box entry-box">
+        <h3>NEW ENTRIES ({{ entries|length }})</h3>
+        {% for s in entries %}
+        <div class="change-item">
+          <span class="sym">{{ s.symbol }}</span>
+          <span>Rank #{{ s.rank_current }}</span>
+          <span class="ret-pos">+{{ s.momentum_1m }}%</span>
+        </div>
+        {% else %}
+        <div style="color:#888; font-size:13px;">No new entries this week.</div>
+        {% endfor %}
+      </div>
+      <div class="change-box exit-box">
+        <h3>EXITS ({{ exits|length }})</h3>
+        {% for s in exits %}
+        <div class="change-item">
+          <span class="sym">{{ s.symbol }}</span>
+          <span>Was #{{ s.rank_previous }}</span>
+          {% if s.momentum_1m is not none %}
+          <span class="ret-neg">{{ s.momentum_1m }}%</span>
+          {% endif %}
+        </div>
+        {% else %}
+        <div style="color:#888; font-size:13px;">No exits this week.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- SECTION 2: Full Portfolio -->
+    <div class="section-title">Section 2 — Full Top 30 Portfolio</div>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Symbol</th>
+          <th>Sector</th>
+          <th>1M Return</th>
+          <th>Entry Price</th>
+          <th>Status</th>
+          <th>Rank Δ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in top30 %}
+        <tr class="row-{{ s.row_class }}">
+          <td>{{ s.rank }}</td>
+          <td><strong>{{ s.symbol }}</strong></td>
+          <td style="color:#555; font-size:12px;">{{ s.sector or '—' }}</td>
+          <td class="{{ 'ret-pos' if s.momentum_1m >= 0 else 'ret-neg' }}">
+            {{ '+' if s.momentum_1m >= 0 else '' }}{{ s.momentum_1m }}%
+          </td>
+          <td>₹{{ s.entry_price }}</td>
+          <td>
+            {% if s.change_type == 'NEW ENTRY' %}
+              <span class="badge-entry">NEW</span>
+            {% elif s.change_type == 'EXIT' %}
+              <span class="badge-exit">EXIT</span>
+            {% else %}
+              <span class="badge-cont">CONT</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.rank_delta is not none %}
+              {% if s.rank_delta > 0 %}
+                <span class="rank-up">▲{{ s.rank_delta }}</span>
+              {% elif s.rank_delta < 0 %}
+                <span class="rank-down">▼{{ s.rank_delta | abs }}</span>
+              {% else %}
+                —
+              {% endif %}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>This is an automated report generated by the NSE Momentum trading system.</p>
+    <p class="disclaimer">For informational purposes only. Not financial advice. Always do your own research before trading.</p>
+  </div>
+</div>
+</body>
+</html>

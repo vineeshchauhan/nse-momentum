@@ -1,0 +1,46 @@
+2026-05-14 00:34:16  INFO      __main__  Initialising database tables...
+2026-05-14 00:34:24  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:34:24  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:34:24  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:34:24  INFO      __main__  Scheduler starting. Press Ctrl+C to stop.
+2026-05-14 00:36:56  INFO      __main__  Initialising database tables...
+2026-05-14 00:36:56  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:36:56  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:36:56  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:36:56  INFO      __main__  Scheduler starting. Press Ctrl+C to stop.
+2026-05-14 00:37:14  INFO      __main__  Initialising database tables...
+2026-05-14 00:37:14  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:37:14  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:37:14  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:37:14  INFO      __main__  Scheduler starting. Press Ctrl+C to stop.
+2026-05-14 00:37:14  INFO      __main__    Registered: Daily OHLCV + BTST result update → trigger: cron[hour='18', minute='0']
+2026-05-14 00:37:14  INFO      __main__    Registered: BTST Screener → trigger: cron[day_of_week='mon-fri', hour='15', minute='0']
+2026-05-14 00:37:14  INFO      __main__    Registered: Weekly Momentum Portfolio → trigger: cron[day_of_week='mon', hour='9', minute='0']
+2026-05-14 00:37:14  INFO      apscheduler.scheduler  Added job "Daily OHLCV + BTST result update" to job store "default"
+2026-05-14 00:37:14  INFO      apscheduler.scheduler  Added job "BTST Screener" to job store "default"
+2026-05-14 00:37:14  INFO      apscheduler.scheduler  Added job "Weekly Momentum Portfolio" to job store "default"
+2026-05-14 00:37:14  INFO      apscheduler.scheduler  Scheduler started
+2026-05-14 00:37:47  INFO      __main__  Initialising database tables...
+2026-05-14 00:37:47  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:37:47  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:37:47  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 00:37:47  INFO      __main__  Scheduler starting. Press Ctrl+C to stop.
+2026-05-14 00:37:47  INFO      __main__    Registered: Daily OHLCV + BTST result update -> trigger: cron[hour='18', minute='0']
+2026-05-14 00:37:47  INFO      __main__    Registered: BTST Screener -> trigger: cron[day_of_week='mon-fri', hour='15', minute='0']
+2026-05-14 00:37:47  INFO      __main__    Registered: Weekly Momentum Portfolio -> trigger: cron[day_of_week='mon', hour='9', minute='0']
+2026-05-14 00:37:47  INFO      apscheduler.scheduler  Added job "Daily OHLCV + BTST result update" to job store "default"
+2026-05-14 00:37:47  INFO      apscheduler.scheduler  Added job "BTST Screener" to job store "default"
+2026-05-14 00:37:47  INFO      apscheduler.scheduler  Added job "Weekly Momentum Portfolio" to job store "default"
+2026-05-14 00:37:47  INFO      apscheduler.scheduler  Scheduler started
+2026-05-14 02:45:02  INFO      __main__  Initialising database tables...
+2026-05-14 02:45:02  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 02:45:02  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 02:45:02  INFO      apscheduler.scheduler  Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-14 02:45:02  INFO      __main__  Scheduler starting. Press Ctrl+C to stop.
+2026-05-14 02:45:02  INFO      __main__    Registered: Daily OHLCV + BTST result update -> trigger: cron[hour='18', minute='0']
+2026-05-14 02:45:02  INFO      __main__    Registered: BTST Screener -> trigger: cron[day_of_week='mon-fri', hour='15', minute='0']
+2026-05-14 02:45:02  INFO      __main__    Registered: Weekly Momentum Portfolio -> trigger: cron[day_of_week='mon', hour='9', minute='0']
+2026-05-14 02:45:02  INFO      apscheduler.scheduler  Added job "Daily OHLCV + BTST result update" to job store "default"
+2026-05-14 02:45:02  INFO      apscheduler.scheduler  Added job "BTST Screener" to job store "default"
+2026-05-14 02:45:02  INFO      apscheduler.scheduler  Added job "Weekly Momentum Portfolio" to job store "default"
+2026-05-14 02:45:02  INFO      apscheduler.scheduler  Scheduler started
