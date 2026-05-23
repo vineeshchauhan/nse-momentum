@@ -7,8 +7,6 @@ ANGEL_API_KEY = os.environ["ANGEL_API_KEY"]
 ANGEL_CLIENT_ID = os.environ["ANGEL_CLIENT_ID"]
 ANGEL_PASSWORD = os.environ["ANGEL_PASSWORD"]
 ANGEL_TOTP_SECRET = os.environ["ANGEL_TOTP_SECRET"]
-# Proxy: nginx on DO droplet forwarding to Angel One.
-# Falls back to Angel One's public URL if not set.
 ANGEL_BASE_URL = os.getenv("ANGEL_BASE_URL", "https://apiconnect.angelbroking.com")
 
 DB_HOST = os.getenv("DB_HOST", "localhost")

@@ -5,7 +5,10 @@ Usage:
     python main.py
 """
 import logging
+import os
 import sys
+
+os.makedirs("logs", exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,7 +16,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("trading.log", encoding="utf-8"),
+        logging.FileHandler("logs/trading.log", encoding="utf-8"),
     ],
 )
 

@@ -5,24 +5,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Common Commands
 
 ```bash
-# Start PostgreSQL (required before anything else)
-docker-compose up -d
+# Start everything (postgres + app) via Docker
+docker compose up -d --build
 
 # One-time historical backfill (~30 min for 500 stocks)
-python scripts/seed_historical.py
+docker compose run --rm app python scripts/seed_historical.py
 
-# Start the scheduler (blocking — runs all jobs on cron)
-python main.py
-
-# Run strategies manually without the scheduler
-python -c "from strategies.btst import run; from emailer.sender import send_btst_email; sigs = run(); send_btst_email(sigs) if sigs else None"
-python -c "from strategies.momentum import run; from emailer.sender import send_momentum_email; r = run(); send_momentum_email(r['top30'], r['changes'], r['exits'], r['week_start'])"
+# Run strategies manually inside the running app container
+docker exec trading_app python -c "from strategies.btst import run; from emailer.sender import send_btst_email; sigs = run(); send_btst_email(sigs) if sigs else None"
+docker exec trading_app python -c "from strategies.momentum import run; from emailer.sender import send_momentum_email; r = run(); send_momentum_email(r['top30'], r['changes'], r['exits'], r['week_start'])"
 
 # Run daily batch manually
-python -c "from data_pipeline.daily_batch import run; run()"
+docker exec trading_app python -c "from data_pipeline.daily_batch import run; run()"
 
 # Inspect the database
 docker exec -it trading_postgres psql -U trading_user -d trading
+
+# View app logs
+docker logs -f trading_app
+# Or tail the persistent log file
+docker exec trading_app tail -f logs/trading.log
 ```
 
 ## Architecture
@@ -71,66 +73,31 @@ Angel SmartAPI (getCandleData) ──► ohlcv table  (PRIMARY KEY: symbol + dat
 
 `AngelClient.login()` calls `pyotp.TOTP(ANGEL_TOTP_SECRET).now()` to generate the TOTP code at runtime — `ANGEL_TOTP_SECRET` is the static Base32 seed, not a rotating code. The `_api` attribute is lazily initialised via the `api` property.
 
-### Angel One proxy (DO server)
+Angel One's API key is configured with the DO droplet's public IP as the allowed IP — the Dockerized app connects to Angel One directly (`https://apiconnect.angelbroking.com`), and the outbound traffic uses the droplet's IP so the IP whitelist is satisfied. Leave `ANGEL_BASE_URL` blank in `.env` (or unset it) to use the default.
 
-All SmartAPI calls are routed through a DigitalOcean droplet (`168.144.31.99`) running nginx, which forwards to Angel One's API. Angel One's API key is configured with the DO server's public IP as the allowed IP — direct calls from other IPs will be rejected.
+### Deployment on DigitalOcean
 
-**How routing works:**
+The app and postgres both run as Docker containers on the DO droplet.
 
-```
-Python code  →  http://168.144.31.99/rest/...
-                        ↓ nginx proxy_pass
-             https://apiconnect.angelbroking.com/rest/...
-```
-
-`ANGEL_BASE_URL=http://168.144.31.99` in `.env` is passed as `root=ANGEL_BASE_URL` to `SmartConnect()`. The SDK constructs all URLs relative to this root, so no other code changes are needed.
-
-**nginx config on DO server** (`/etc/nginx/sites-available/angelone-proxy`):
-
-```nginx
-server {
-    listen 80;
-    server_name 168.144.31.99;
-
-    location /rest/ {
-        proxy_pass            https://apiconnect.angelbroking.com;
-        proxy_ssl_server_name on;
-        proxy_set_header      Host apiconnect.angelbroking.com;
-        proxy_set_header      X-Real-IP $remote_addr;
-        proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header      Authorization $http_authorization;
-        proxy_pass_request_headers on;
-        proxy_read_timeout    30s;
-        proxy_redirect        off;
-    }
-
-    location /gtt-service/ {
-        proxy_pass            https://apiconnect.angelbroking.com;
-        proxy_ssl_server_name on;
-        proxy_set_header      Host apiconnect.angelbroking.com;
-        proxy_set_header      X-Real-IP $remote_addr;
-        proxy_set_header      X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header      Authorization $http_authorization;
-        proxy_pass_request_headers on;
-        proxy_read_timeout    30s;
-        proxy_redirect        off;
-    }
-}
-```
-
-Enable and reload on the DO server:
+**First deploy:**
 ```bash
-sudo ln -s /etc/nginx/sites-available/angelone-proxy /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
+# On the DO droplet
+git clone <repo> nse-momentum && cd nse-momentum
+cp .env.example .env
+# Fill in .env with real credentials
+docker compose up -d --build
+# One-time backfill
+docker compose run --rm app python scripts/seed_historical.py
 ```
 
-**Known issues / gotchas:**
-- Port 443 is not configured on the DO server — proxy is HTTP-only on port 80.
-- The `/rest/` upstream must be `apiconnect.angelbroking.com`, not `apiconnect.angelone.in` — the SmartConnect SDK defaults to the `.com` domain and Angel One may validate the Host header.
-- If nginx returns its own 404 (not Angel One's), the config file is not symlinked in `sites-enabled` or nginx has not been reloaded.
-- All SmartAPI routes use `/rest/` prefix except GTT orders which use `/gtt-service/rest/`.
-
-**Test the proxy connection:**
+**Redeploy after code changes:**
 ```bash
-python tests/test_angel_proxy.py
+git pull
+docker compose up -d --build app
+```
+
+**Logs and monitoring:**
+```bash
+docker compose ps
+docker logs -f trading_app
 ```
