@@ -1,5 +1,5 @@
 """
-Weekly Momentum Portfolio — runs every Monday at 9:00 AM IST.
+Weekly Momentum Portfolio — runs every Saturday at 9:00 AM IST.
 
 1. Ranks all Nifty 500 stocks by 1-month return (today vs 20 trading days ago).
 2. Selects top 30.
@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 
 def get_week_start(as_of: date = None) -> date:
     today = as_of or date.today()
-    return today - timedelta(days=today.weekday())  # Monday of current week
+    # Most recent Saturday (0=Mon … 5=Sat, 6=Sun)
+    days_since_saturday = (today.weekday() - 5) % 7
+    return today - timedelta(days=days_since_saturday)
 
 
 def get_momentum_scores(as_of: date = None) -> list:
@@ -66,7 +68,9 @@ def get_momentum_scores(as_of: date = None) -> list:
     """
     with get_cursor() as cur:
         cur.execute(sql, (as_of, as_of, as_of))
-        return [dict(r) for r in cur.fetchall()]
+        rows = [dict(r) for r in cur.fetchall()]
+    logger.info("Momentum scores computed for %d stocks (as_of=%s).", len(rows), as_of)
+    return rows
 
 
 def get_previous_portfolio(week_start: date) -> dict:
@@ -77,7 +81,11 @@ def get_previous_portfolio(week_start: date) -> dict:
             "SELECT symbol, rank FROM momentum_portfolio WHERE week_start = %s",
             (prev_week,),
         )
-        return {r["symbol"]: r["rank"] for r in cur.fetchall()}
+        portfolio = {r["symbol"]: r["rank"] for r in cur.fetchall()}
+    logger.info(
+        "Previous portfolio (week=%s): %d stocks.", prev_week, len(portfolio)
+    )
+    return portfolio
 
 
 def save_portfolio(week_start: date, top30: list):
@@ -190,11 +198,18 @@ def run(as_of_date: date = None) -> dict:
     all_changes = changes + exits
     save_changes(week_start, all_changes)
 
+    new_entries = sum(1 for c in changes if c["change_type"] == "NEW ENTRY")
+    continuations = sum(1 for c in changes if c["change_type"] == "CONTINUATION")
     logger.info(
-        f"Portfolio saved: {len(top30)} stocks, "
-        f"{sum(1 for c in changes if c['change_type']=='NEW ENTRY')} new entries, "
-        f"{len(exits)} exits."
+        "Portfolio saved: %d stocks — %d new entries, %d continuations, %d exits.",
+        len(top30), new_entries, continuations, len(exits),
     )
+    if new_entries:
+        entry_symbols = [c["symbol"] for c in changes if c["change_type"] == "NEW ENTRY"]
+        logger.info("New entries: %s", ", ".join(entry_symbols))
+    if exits:
+        exit_symbols = [e["symbol"] for e in exits]
+        logger.info("Exits: %s", ", ".join(exit_symbols))
     logger.info("=== Weekly Momentum completed ===")
 
     return {

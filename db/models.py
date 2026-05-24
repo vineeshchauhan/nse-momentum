@@ -1,4 +1,8 @@
+import logging
+
 from db.connection import get_cursor
+
+logger = logging.getLogger(__name__)
 
 
 def create_tables():
@@ -75,7 +79,7 @@ def create_tables():
     """
     with get_cursor(commit=True) as cur:
         cur.execute(ddl)
-    print("Tables created (or already exist).")
+    logger.info("Database tables created (or already exist).")
 
 
 if __name__ == "__main__":

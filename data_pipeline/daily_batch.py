@@ -108,14 +108,17 @@ def run(target_date: date = None, symbol: str = None):
             logger.error(f"Symbol {symbol!r} not found in Nifty 500 universe.")
             return
 
+    total = len(universe)
     rows = []
     empty_count = 0
-    for _, row in universe.iterrows():
+    for i, (_, row) in enumerate(universe.iterrows(), 1):
         result = fetch_ohlcv_for_date(client, str(row["token"]), row["symbol"], target_date)
         if result:
             rows.append(result)
         else:
             empty_count += 1
+        if i % 50 == 0 or i == total:
+            logger.info("  OHLCV fetch progress: %d/%d stocks (%d with data)", i, total, len(rows))
         time.sleep(RATE_LIMIT_SLEEP)
 
     if rows:
@@ -127,6 +130,8 @@ def run(target_date: date = None, symbol: str = None):
             "Likely a market holiday or weekend."
         )
 
+    logger.info("Updating BTST next-day results (signal_date=%s, result_date=%s)...",
+                signal_date, target_date)
     update_btst_results(result_date=target_date, signal_date=signal_date)
     logger.info("=== Daily batch completed ===")
 

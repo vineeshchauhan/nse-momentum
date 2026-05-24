@@ -5,20 +5,10 @@ Usage:
     python main.py
 """
 import logging
-import os
-import sys
 
-os.makedirs("logs", exist_ok=True)
+from logging_config import setup_logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("logs/trading.log", encoding="utf-8"),
-    ],
-)
+setup_logging()
 
 logger = logging.getLogger(__name__)
 

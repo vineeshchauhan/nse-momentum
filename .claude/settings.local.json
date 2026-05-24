@@ -9,7 +9,11 @@
       "Bash(Get-Content \"C:\\\\Users\\\\Vini\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--dev-nse-momentum\\\\d1a54a51-cb5b-4cc4-99cc-6a2d720229ee\\\\tasks\\\\bgu5s42b1.output\")",
       "Bash(Select-Object -Last 40)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\nse-momentum\" -Recurse -Force | Select-Object FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"C:\\\\dev\\\\nse-momentum\"\\), \".\" } | Sort-Object)",
-      "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\nse-momentum\" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"migration|schema|\\\\.sql$\" } | Select-Object FullName)"
+      "PowerShell(Get-ChildItem -Path \"C:\\\\dev\\\\nse-momentum\" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"migration|schema|\\\\.sql$\" } | Select-Object FullName)",
+      "Bash(docker exec *)",
+      "Bash(curl -s http://168.144.31.99:5000/btst)",
+      "Bash(docker compose up *)",
+      "Bash(python3 -m py_compile logging_config.py main.py run.py web/app.py db/models.py db/connection.py data_pipeline/angel_client.py data_pipeline/nse_universe.py data_pipeline/daily_batch.py strategies/btst.py strategies/momentum.py)"
     ]
   }
 }

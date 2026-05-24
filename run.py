@@ -29,12 +29,8 @@ def _parse_date(s: str) -> date:
 
 
 def _setup_logging():
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
+    from logging_config import setup_logging
+    setup_logging()
 
 
 def main():

@@ -2,6 +2,46 @@
 {% block title %}BTST Signals — NSE Momentum{% endblock %}
 
 {% block content %}
+<div class="card border-primary mb-4">
+  <div class="card-body py-3">
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <span class="fw-semibold">BTST Screener</span>
+      <div class="d-flex align-items-center gap-2">
+        <label class="mb-0 text-muted small" for="runDate">Date:</label>
+        <input type="date" id="runDate" class="form-control form-control-sm" style="width:160px" value="{{ today }}">
+      </div>
+      <button id="runBtn" class="btn btn-primary btn-sm" onclick="runNow()">Run Now</button>
+      <span id="runStatus" class="small"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+async function runNow() {
+  const d = document.getElementById('runDate').value;
+  const btn = document.getElementById('runBtn');
+  const status = document.getElementById('runStatus');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Running…';
+  status.innerHTML = '';
+  try {
+    const resp = await fetch('/run/btst', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({date: d})
+    });
+    const data = await resp.json();
+    status.innerHTML = data.ok
+      ? '<span class="text-success">&#10003; ' + data.message + '</span>'
+      : '<span class="text-danger">&#10007; ' + data.error + '</span>';
+  } catch(e) {
+    status.innerHTML = '<span class="text-danger">&#10007; Request failed</span>';
+  }
+  btn.disabled = false;
+  btn.innerHTML = 'Run Now';
+}
+</script>
+
 <h4 class="mb-4">BTST Signals <small class="text-muted fs-6">(last 30 days)</small></h4>
 
 {% if not signals %}
@@ -33,7 +73,7 @@
           <td>{{ "%.2f"|format(sig.volume_ratio) }}x</td>
           <td>₹{{ "%.2f"|format(sig.close_price) }}</td>
           <td>₹{{ "%.0f"|format(sig.suggested_strike) }}</td>
-          <td>₹{{ "%.2f"|format(sig.close_price * 0.98) }}</td>
+          <td>₹{{ "%.2f"|format(sig.close_price | float * 0.98) }}</td>
           <td>
             {% if sig.result_next_day is not none %}
               <span class="{% if sig.result_next_day >= 0 %}result-pos{% else %}result-neg{% endif %}">

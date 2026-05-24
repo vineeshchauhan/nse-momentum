@@ -4,7 +4,7 @@ APScheduler configuration.
 Jobs:
   - Daily 6:00 PM IST   → data_pipeline.daily_batch.run()
   - Weekdays 3:00 PM IST → strategies.btst.run() + send email
-  - Monday 9:00 AM IST  → strategies.momentum.run() + send email
+  - Saturday 9:00 AM IST → strategies.momentum.run() + send email
 """
 import logging
 from datetime import datetime
@@ -104,10 +104,10 @@ def build_scheduler() -> BlockingScheduler:
         misfire_grace_time=120,
     )
 
-    # Weekly momentum every Monday at 9:00 AM IST
+    # Weekly momentum every Saturday at 9:00 AM IST
     scheduler.add_job(
         job_momentum,
-        CronTrigger(day_of_week="mon", hour=9, minute=0, timezone=IST),
+        CronTrigger(day_of_week="sat", hour=9, minute=0, timezone=IST),
         id="momentum_weekly",
         name="Weekly Momentum Portfolio",
         misfire_grace_time=300,

@@ -73,7 +73,9 @@ def fetch_angel_instruments() -> pd.DataFrame:
     nse_eq = nse_eq[["symbol", "token", "name", "lotsize"]].copy()
     # Strip NSE series suffixes: -EQ, -BE, -BZ, -SM, -IL, etc.
     nse_eq["symbol"] = nse_eq["symbol"].str.replace(r"-[A-Z]{2}$", "", regex=True).str.strip()
-    return nse_eq.drop_duplicates(subset="symbol")
+    nse_eq = nse_eq.drop_duplicates(subset="symbol")
+    logger.info("Fetched %d NSE equity instruments from Angel One master", len(nse_eq))
+    return nse_eq
 
 
 def get_fo_symbols() -> set:
@@ -87,6 +89,7 @@ def get_fo_symbols() -> set:
         base = sym.split("-")[0].split(" ")[0].strip()
         if base:
             fo_syms.add(base)
+    logger.info("Identified %d F&O symbols from NFO segment", len(fo_syms))
     return fo_syms
 
 

@@ -45,7 +45,9 @@ def get_nifty_change(client: AngelClient, target_date: date = None) -> float:
 def get_fo_stocks() -> list:
     with get_cursor() as cur:
         cur.execute("SELECT symbol FROM stocks WHERE is_fo = TRUE AND is_nifty500 = TRUE")
-        return [r["symbol"] for r in cur.fetchall()]
+        stocks = [r["symbol"] for r in cur.fetchall()]
+    logger.info("F&O Nifty500 universe: %d stocks", len(stocks))
+    return stocks
 
 
 def get_previous_close(symbol: str, as_of: date = None) -> Optional[float]:
@@ -159,42 +161,67 @@ def run(target_date: date = None) -> list:
         return []
 
     fo_stocks = get_fo_stocks()
-    logger.info(f"Scanning {len(fo_stocks)} F&O stocks...")
 
     current_prices = get_current_prices(client, fo_stocks, target_date)
+    logger.info(
+        "Price data available for %d/%d stocks.", len(current_prices), len(fo_stocks)
+    )
 
     signals = []
+    no_data = 0
+    price_filter_miss = 0
+    vol_filter_miss = 0
+
     for symbol in fo_stocks:
         if symbol not in current_prices:
+            no_data += 1
             continue
         close, volume = current_prices[symbol]
         prev_close = get_previous_close(symbol, as_of=target_date)
         avg_vol    = get_20d_avg_volume(symbol, as_of=target_date)
 
         if prev_close is None or avg_vol is None or avg_vol == 0:
+            no_data += 1
             continue
 
         price_chg_pct = (close - prev_close) / prev_close * 100
         vol_ratio     = volume / avg_vol
 
-        if price_chg_pct >= BTST_MIN_PRICE_CHANGE_PCT and vol_ratio >= BTST_MIN_VOLUME_RATIO:
-            signals.append({
-                "symbol":           symbol,
-                "price_change_pct": round(price_chg_pct, 2),
-                "volume_ratio":     round(vol_ratio, 2),
-                "close_price":      close,
-                "suggested_strike": suggest_atm_call_strike(close),
-                "stop_loss":        round(close * 0.98, 2),
-            })
+        if price_chg_pct < BTST_MIN_PRICE_CHANGE_PCT:
+            price_filter_miss += 1
+            continue
+        if vol_ratio < BTST_MIN_VOLUME_RATIO:
+            vol_filter_miss += 1
+            continue
+
+        signals.append({
+            "symbol":           symbol,
+            "price_change_pct": round(price_chg_pct, 2),
+            "volume_ratio":     round(vol_ratio, 2),
+            "close_price":      close,
+            "suggested_strike": suggest_atm_call_strike(close),
+            "stop_loss":        round(close * 0.98, 2),
+        })
+
+    logger.info(
+        "Scan results: %d no data, %d failed price≥%.0f%%, %d failed vol≥%.1fx, %d passed.",
+        no_data, price_filter_miss, BTST_MIN_PRICE_CHANGE_PCT,
+        vol_filter_miss, BTST_MIN_VOLUME_RATIO, len(signals),
+    )
 
     # Sort by volume ratio descending
     signals.sort(key=lambda x: x["volume_ratio"], reverse=True)
 
     if signals:
         save_signals(signals, target_date)
-        logger.info(f"Saved {len(signals)} BTST signals.")
+        logger.info("Saved %d BTST signal(s) to DB.", len(signals))
+        for s in signals:
+            logger.info(
+                "  %s: price_chg=%.2f%% vol_ratio=%.2fx close=%.2f",
+                s["symbol"], s["price_change_pct"], s["volume_ratio"], s["close_price"],
+            )
     else:
-        logger.info("No BTST signals.")
+        logger.info("No BTST signals for %s.", target_date)
 
     logger.info("=== BTST Screener completed ===")
     return signals

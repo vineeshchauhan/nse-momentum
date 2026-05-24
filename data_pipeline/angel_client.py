@@ -34,6 +34,10 @@ class AngelClient:
         from_date / to_date format: "YYYY-MM-DD HH:MM"
         interval: ONE_DAY, ONE_HOUR, FIFTEEN_MINUTE, etc.
         """
+        logger.debug(
+            "getCandleData token=%s exchange=%s interval=%s from=%s to=%s",
+            symbol_token, exchange, interval, from_date, to_date,
+        )
         params = {
             "exchange": exchange,
             "symboltoken": symbol_token,
@@ -43,18 +47,29 @@ class AngelClient:
         }
         resp = self.api.getCandleData(params)
         if resp["status"] is False:
+            logger.warning(
+                "getCandleData failed token=%s: %s", symbol_token, resp["message"]
+            )
             raise RuntimeError(f"getCandleData error for {symbol_token}: {resp['message']}")
-        return resp["data"]  # list of [timestamp, open, high, low, close, volume]
+        candles = resp["data"] or []
+        logger.debug("getCandleData token=%s returned %d candles", symbol_token, len(candles))
+        return candles
 
     def get_ltp(self, exchange: str, symbol: str, symbol_token: str) -> float:
+        logger.debug("ltpData exchange=%s symbol=%s token=%s", exchange, symbol, symbol_token)
         resp = self.api.ltpData(exchange, symbol, symbol_token)
         if resp["status"] is False:
+            logger.warning("ltpData failed symbol=%s: %s", symbol, resp["message"])
             raise RuntimeError(f"ltpData error: {resp['message']}")
-        return float(resp["data"]["ltp"])
+        ltp = float(resp["data"]["ltp"])
+        logger.debug("ltpData symbol=%s ltp=%.2f", symbol, ltp)
+        return ltp
 
     def get_market_quote(self, tokens: list) -> dict:
         """tokens: list of {"exchange": "NSE", "symboltoken": "99926000"}"""
+        logger.debug("getMarketData FULL for %d token(s)", len(tokens))
         resp = self.api.getMarketData("FULL", tokens)
         if resp["status"] is False:
+            logger.warning("getMarketData failed: %s", resp["message"])
             raise RuntimeError(f"getMarketData error: {resp['message']}")
         return resp["data"]
