@@ -73,3 +73,16 @@ class AngelClient:
             logger.warning("getMarketData failed: %s", resp["message"])
             raise RuntimeError(f"getMarketData error: {resp['message']}")
         return resp["data"]
+
+    def get_option_greeks(self, name: str, expiry_date: str) -> list:
+        """
+        Fetch option greeks for a symbol/index.
+        name: stock symbol or index (e.g. "RELIANCE", "NIFTY")
+        expiry_date: "DDMonYYYY" e.g. "29May2025"
+        Returns list of option data dicts with greeks including impliedVolatility.
+        """
+        logger.debug("getOptionGreeks name=%s expiry=%s", name, expiry_date)
+        resp = self.api.getOptionGreeks({"name": name, "expirydate": expiry_date})
+        if resp.get("status") is False:
+            raise RuntimeError(f"getOptionGreeks {name}/{expiry_date}: {resp.get('message')}")
+        return resp.get("data") or []

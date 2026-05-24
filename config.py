@@ -27,6 +27,10 @@ MOMENTUM_TOP_N = 30
 MOMENTUM_LOOKBACK_DAYS = 20
 
 # BTST params
-BTST_MIN_PRICE_CHANGE_PCT = 5.0
-BTST_MIN_VOLUME_RATIO = 1.5
-BTST_NIFTY_DOWN_THRESHOLD = -1.0
+BTST_MIN_PRICE_CHANGE_PCT  = 5.0
+BTST_MIN_VOLUME_RATIO      = 1.5
+BTST_NIFTY_DOWN_THRESHOLD  = -1.0
+BTST_CLOSE_NEAR_HIGH_PCT   = 0.97   # close must be >= 97% of day's high
+BTST_PRIOR_TREND_MIN_PCT   = -3.0   # 5-day net move floor
+BTST_PRIOR_TREND_MAX_PCT   = 3.0    # 5-day net move ceiling
+BTST_PRIOR_ADR_MAX_PCT     = 2.0    # avg daily range over last 5 days must be < 2%

@@ -69,9 +69,27 @@ def create_app():
                 "Manual BTST complete: %d signal(s), email_sent=%s",
                 len(signals), email_sent,
             )
-            return jsonify({"ok": True,
-                            "message": f"{len(signals)} signal(s) found for {target.isoformat()}. "
-                                       + ("Email sent." if email_sent else "No email sent.")})
+            sig_data = [
+                {
+                    "symbol":           s["symbol"],
+                    "name":             s.get("name") or s["symbol"],
+                    "price_change_pct": s["price_change_pct"],
+                    "volume_ratio":     s["volume_ratio"],
+                    "close_price":      s["close_price"],
+                    "suggested_strike": s["suggested_strike"],
+                    "stop_loss":        s["stop_loss"],
+                    "iv_current_month": s.get("iv_current_month"),
+                    "iv_next_month":    s.get("iv_next_month"),
+                }
+                for s in signals
+            ]
+            return jsonify({
+                "ok":        True,
+                "signals":   sig_data,
+                "email_sent": email_sent,
+                "message":   f"{len(signals)} signal(s) found for {target.isoformat()}. "
+                             + ("Email sent." if email_sent else "No email sent."),
+            })
         except Exception as e:
             logger.exception("Manual BTST run failed for %s", target.isoformat())
             return jsonify({"ok": False, "error": str(e)}), 500

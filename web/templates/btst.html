@@ -16,14 +16,22 @@
   </div>
 </div>
 
+<div id="runResults" class="mb-4"></div>
+
 <script>
+function fmtIV(v) {
+  return (v !== null && v !== undefined) ? v.toFixed(2) + '%' : '—';
+}
+
 async function runNow() {
   const d = document.getElementById('runDate').value;
   const btn = document.getElementById('runBtn');
   const status = document.getElementById('runStatus');
+  const results = document.getElementById('runResults');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span>Running…';
   status.innerHTML = '';
+  results.innerHTML = '';
   try {
     const resp = await fetch('/run/btst', {
       method: 'POST',
@@ -31,9 +39,39 @@ async function runNow() {
       body: JSON.stringify({date: d})
     });
     const data = await resp.json();
-    status.innerHTML = data.ok
-      ? '<span class="text-success">&#10003; ' + data.message + '</span>'
-      : '<span class="text-danger">&#10007; ' + data.error + '</span>';
+    if (!data.ok) {
+      status.innerHTML = '<span class="text-danger">&#10007; ' + data.error + '</span>';
+    } else {
+      status.innerHTML = '<span class="text-success">&#10003; ' + data.message + '</span>';
+      if (data.signals && data.signals.length > 0) {
+        let rows = data.signals.map(s => `
+          <tr>
+            <td class="fw-semibold">${s.symbol}</td>
+            <td class="text-muted small">${s.name || '—'}</td>
+            <td class="result-pos">+${s.price_change_pct.toFixed(2)}%</td>
+            <td>${s.volume_ratio.toFixed(2)}x</td>
+            <td>₹${s.close_price.toFixed(2)}</td>
+            <td>₹${s.suggested_strike.toFixed(0)}</td>
+            <td>₹${s.stop_loss.toFixed(2)}</td>
+            <td>${fmtIV(s.iv_current_month)}</td>
+            <td>${fmtIV(s.iv_next_month)}</td>
+          </tr>`).join('');
+        results.innerHTML = `
+          <h6 class="mb-2">Results for ${d}</h6>
+          <div class="table-responsive">
+          <table class="table table-sm table-hover table-bordered align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Symbol</th><th>Name</th><th>Change %</th><th>Vol Ratio</th>
+                <th>Close</th><th>Strike</th><th>Stop Loss</th>
+                <th>IV (Cur Mth)</th><th>IV (Nxt Mth)</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          </div>`;
+      }
+    }
   } catch(e) {
     status.innerHTML = '<span class="text-danger">&#10007; Request failed</span>';
   }
@@ -53,10 +91,12 @@ async function runNow() {
       {% set ns.last_date = sig.date %}
       {% if not loop.first %}</tbody></table>{% endif %}
       <h6 class="mt-4 mb-2">{{ sig.date.strftime("%A, %d %b %Y") }}</h6>
+      <div class="table-responsive">
       <table class="table table-sm table-hover table-bordered align-middle">
         <thead class="table-dark">
           <tr>
             <th>Symbol</th>
+            <th>Name</th>
             <th>Change %</th>
             <th>Vol Ratio</th>
             <th>Close</th>
@@ -69,6 +109,7 @@ async function runNow() {
     {% endif %}
         <tr>
           <td class="fw-semibold">{{ sig.symbol }}</td>
+          <td class="text-muted small">{{ sig.name or '—' }}</td>
           <td class="result-pos">+{{ "%.2f"|format(sig.price_change_pct) }}%</td>
           <td>{{ "%.2f"|format(sig.volume_ratio) }}x</td>
           <td>₹{{ "%.2f"|format(sig.close_price) }}</td>
@@ -86,5 +127,6 @@ async function runNow() {
         </tr>
   {% endfor %}
   </tbody></table>
+  </div>
 {% endif %}
 {% endblock %}

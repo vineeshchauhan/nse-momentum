@@ -16,11 +16,13 @@ def get_recent_runs(days=30):
 def get_btst_signals(days=30):
     with get_cursor() as cur:
         cur.execute("""
-            SELECT date, symbol, price_change_pct, volume_ratio,
-                   close_price, suggested_strike, result_next_day
-            FROM btst_signals
-            WHERE date >= CURRENT_DATE - %s
-            ORDER BY date DESC, volume_ratio DESC
+            SELECT bs.date, bs.symbol, s.name,
+                   bs.price_change_pct, bs.volume_ratio,
+                   bs.close_price, bs.suggested_strike, bs.result_next_day
+            FROM btst_signals bs
+            LEFT JOIN stocks s ON s.symbol = bs.symbol
+            WHERE bs.date >= CURRENT_DATE - %s
+            ORDER BY bs.date DESC, bs.volume_ratio DESC
         """, (days,))
         return cur.fetchall()
 
