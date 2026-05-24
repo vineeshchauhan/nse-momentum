@@ -3,10 +3,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ANGEL_API_KEY = os.environ["ANGEL_API_KEY"]
-ANGEL_CLIENT_ID = os.environ["ANGEL_CLIENT_ID"]
-ANGEL_PASSWORD = os.environ["ANGEL_PASSWORD"]
-ANGEL_TOTP_SECRET = os.environ["ANGEL_TOTP_SECRET"]
+ANGEL_API_KEY = os.getenv("ANGEL_API_KEY", "")
+ANGEL_CLIENT_ID = os.getenv("ANGEL_CLIENT_ID", "")
+ANGEL_PASSWORD = os.getenv("ANGEL_PASSWORD", "")
+ANGEL_TOTP_SECRET = os.getenv("ANGEL_TOTP_SECRET", "")
 ANGEL_BASE_URL = os.getenv("ANGEL_BASE_URL", "https://apiconnect.angelbroking.com")
 
 DB_HOST = os.getenv("DB_HOST", "localhost")

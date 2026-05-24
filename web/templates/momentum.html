@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Momentum Portfolio — NSE Momentum{% endblock %}
+
+{% block content %}
+<h4 class="mb-1">Momentum Portfolio</h4>
+
+{% if not weeks %}
+  <div class="alert alert-secondary mt-3">No momentum data yet.</div>
+{% else %}
+  <p class="text-muted mb-3">Week of {{ weeks[0].strftime("%d %b %Y") }}</p>
+
+  <table class="table table-sm table-hover table-bordered align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Symbol</th>
+        <th>Sector</th>
+        <th>Momentum 1M</th>
+        <th>Entry Price</th>
+        <th>Change</th>
+        <th>Prev Rank</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in current %}
+        <tr class="{% if row.change_type == 'NEW ENTRY' %}row-entry{% elif row.change_type == 'EXIT' %}row-exit{% endif %}">
+          <td>{{ row.rank }}</td>
+          <td class="fw-semibold">{{ row.symbol }}</td>
+          <td class="small text-muted">{{ row.sector or "—" }}</td>
+          <td class="result-pos">{{ "%.2f"|format(row.momentum_1m) }}%</td>
+          <td>₹{{ "%.2f"|format(row.entry_price) }}</td>
+          <td>
+            {% if row.change_type == "NEW ENTRY" %}
+              <span class="badge bg-success">New Entry</span>
+            {% elif row.change_type == "EXIT" %}
+              <span class="badge bg-danger">Exit</span>
+            {% else %}
+              <span class="text-muted small">Cont.</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">{{ row.rank_previous or "—" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% if history %}
+  <h5 class="mt-5 mb-3">Previous Weeks</h5>
+  <div class="accordion" id="histAccordion">
+    {% for week, rows in history %}
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse"
+                data-bs-target="#hist{{ loop.index }}">
+          Week of {{ week.strftime("%d %b %Y") }}
+          <span class="ms-2 text-muted small">({{ rows|length }} stocks)</span>
+        </button>
+      </h2>
+      <div id="hist{{ loop.index }}" class="accordion-collapse collapse"
+           data-bs-parent="#histAccordion">
+        <div class="accordion-body p-0">
+          <table class="table table-sm table-bordered mb-0">
+            <thead class="table-secondary">
+              <tr>
+                <th>#</th><th>Symbol</th><th>Sector</th>
+                <th>Momentum 1M</th><th>Entry Price</th><th>Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in rows %}
+              <tr class="{% if row.change_type == 'NEW ENTRY' %}row-entry{% elif row.change_type == 'EXIT' %}row-exit{% endif %}">
+                <td>{{ row.rank }}</td>
+                <td class="fw-semibold">{{ row.symbol }}</td>
+                <td class="small text-muted">{{ row.sector or "—" }}</td>
+                <td>{{ "%.2f"|format(row.momentum_1m) }}%</td>
+                <td>₹{{ "%.2f"|format(row.entry_price) }}</td>
+                <td>
+                  {% if row.change_type == "NEW ENTRY" %}
+                    <span class="badge bg-success">New Entry</span>
+                  {% elif row.change_type == "EXIT" %}
+                    <span class="badge bg-danger">Exit</span>
+                  {% else %}
+                    <span class="text-muted small">Cont.</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+{% endif %}
+{% endblock %}

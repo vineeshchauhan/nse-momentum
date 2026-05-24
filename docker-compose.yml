@@ -11,6 +11,19 @@ services:
     networks:
       - n8n_default
 
+  web:
+    build: .
+    container_name: trading_web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: n8n-postgres
+    command: ["python", "web/app.py"]
+    ports:
+      - "5000:5000"
+    networks:
+      - n8n_default
+
 volumes:
   app_logs:
 

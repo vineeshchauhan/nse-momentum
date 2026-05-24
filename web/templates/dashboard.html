@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — NSE Momentum{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">Scheduler Run History <small class="text-muted fs-6">(last 30 days)</small></h4>
+
+{% if not runs %}
+  <div class="alert alert-secondary">No scheduler runs recorded yet.</div>
+{% else %}
+  {% set ns = namespace(last_date=None) %}
+  <table class="table table-sm table-hover table-bordered align-middle">
+    <thead class="table-dark">
+      <tr>
+        <th>Job</th>
+        <th>Time (IST)</th>
+        <th>Status</th>
+        <th>Duration</th>
+        <th>Signals</th>
+        <th>Email</th>
+        <th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+        {% set run_date = run.started_at.date() %}
+        {% if run_date != ns.last_date %}
+          {% set ns.last_date = run_date %}
+          <tr class="date-heading">
+            <td colspan="7">{{ run_date.strftime("%A, %d %b %Y") }}</td>
+          </tr>
+        {% endif %}
+        <tr>
+          <td>{{ run.job_name }}</td>
+          <td class="text-nowrap">{{ run.started_at.strftime("%H:%M:%S") }}</td>
+          <td>
+            {% if run.status == "success" %}
+              <span class="badge badge-success">success</span>
+            {% elif run.status == "failure" %}
+              <span class="badge badge-failure">failure</span>
+            {% else %}
+              <span class="badge badge-skipped">{{ run.status }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if run.duration_s is not none %}
+              {{ "%.1f"|format(run.duration_s) }}s
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if run.num_signals is not none %}{{ run.num_signals }}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if run.email_sent %}
+              <span class="text-success">✓</span>
+            {% else %}
+              <span class="text-muted">—</span>
+            {% endif %}
+          </td>
+          <td class="text-danger small">
+            {% if run.error_msg %}
+              <span title="{{ run.error_msg }}">{{ run.error_msg[:80] }}{% if run.error_msg|length > 80 %}…{% endif %}</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endif %}
+{% endblock %}

@@ -56,6 +56,22 @@ def create_tables():
         momentum_1m     NUMERIC(8,2),
         PRIMARY KEY (week_start, symbol)
     );
+
+    CREATE TABLE IF NOT EXISTS scheduler_runs (
+        id           SERIAL PRIMARY KEY,
+        job_id       VARCHAR(50)   NOT NULL,
+        job_name     VARCHAR(100)  NOT NULL,
+        started_at   TIMESTAMPTZ   NOT NULL,
+        finished_at  TIMESTAMPTZ,
+        status       VARCHAR(20)   NOT NULL,
+        error_msg    TEXT,
+        duration_s   NUMERIC(10,3),
+        num_signals  INTEGER,
+        email_sent   BOOLEAN DEFAULT FALSE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_scheduler_runs_started
+        ON scheduler_runs(started_at DESC);
     """
     with get_cursor(commit=True) as cur:
         cur.execute(ddl)

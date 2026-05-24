@@ -38,17 +38,26 @@ def _render(template_name: str, context: dict) -> str:
         return html
 
 
-def _send(subject: str, html_body: str):
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = EMAIL_SENDER
-    msg["To"]      = EMAIL_RECEIVER
-    msg.attach(MIMEText(html_body, "html", "utf-8"))
+def _send(subject: str, html_body: str) -> bool:
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = EMAIL_SENDER
+        msg["To"]      = EMAIL_RECEIVER
+        msg.attach(MIMEText(html_body, "html", "utf-8"))
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-        smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-        smtp.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, msg.as_string())
-    logger.info(f"Email sent: {subject}")
+        import socket
+        ipv4 = socket.getaddrinfo("smtp.gmail.com", 587, socket.AF_INET)[0][4][0]
+        with smtplib.SMTP(ipv4, 587) as smtp:
+            smtp.ehlo()
+            smtp.starttls()
+            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            smtp.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, msg.as_string())
+        logger.info(f"Email sent: {subject}")
+        return True
+    except Exception as e:
+        logger.error(f"Email failed ({subject!r}): {e}", exc_info=True)
+        return False
 
 
 def send_btst_email(signals: list, nifty_change: float = 0.0):
@@ -62,7 +71,7 @@ def send_btst_email(signals: list, nifty_change: float = 0.0):
         "signals":      signals,
     }
     html = _render("btst_template.html", context)
-    _send(f"BTST Screener — {today} — {len(signals)} Signals", html)
+    return _send(f"BTST Screener — {today} — {len(signals)} Signals", html)
 
 
 def send_momentum_email(top30: list, changes: list, exits: list, week_start: date):
@@ -91,4 +100,4 @@ def send_momentum_email(top30: list, changes: list, exits: list, week_start: dat
     }
     html = _render("momentum_template.html", context)
     week_str = week_start.strftime("%d %b %Y")
-    _send(f"Momentum Portfolio — Week of {week_str} — {len(entries)} new, {len(exits)} exits", html)
+    return _send(f"Momentum Portfolio — Week of {week_str} — {len(entries)} new, {len(exits)} exits", html)

@@ -7,6 +7,7 @@ Jobs:
   - Monday 9:00 AM IST  → strategies.momentum.run() + send email
 """
 import logging
+from datetime import datetime
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 import pytz
@@ -19,30 +20,67 @@ IST = pytz.timezone(TIMEZONE)
 
 def job_daily_batch():
     from data_pipeline.daily_batch import run
-    run()
+    from db.scheduler_log import log_run
+    started = datetime.now(IST)
+    try:
+        run()
+        log_run("daily_batch", "Daily OHLCV + BTST result update",
+                "success", started, datetime.now(IST))
+    except Exception as e:
+        logger.exception("job_daily_batch failed")
+        log_run("daily_batch", "Daily OHLCV + BTST result update",
+                "failure", started, datetime.now(IST), error_msg=str(e))
+        raise
 
 
 def job_btst():
     from strategies.btst import run as btst_run
     from emailer.sender import send_btst_email
-    signals = btst_run()
-    if signals:
-        send_btst_email(signals)
-    else:
-        logger.info("No BTST signals — email not sent.")
+    from db.scheduler_log import log_run
+    started = datetime.now(IST)
+    signals, email_sent = [], False
+    try:
+        signals = btst_run() or []
+        if signals:
+            email_sent = send_btst_email(signals)
+        else:
+            logger.info("No BTST signals — email not sent.")
+        status = "success" if signals else "skipped"
+        log_run("btst_screener", "BTST Screener", status,
+                started, datetime.now(IST),
+                num_signals=len(signals), email_sent=email_sent)
+    except Exception as e:
+        logger.exception("job_btst failed")
+        log_run("btst_screener", "BTST Screener", "failure",
+                started, datetime.now(IST),
+                error_msg=str(e), num_signals=len(signals), email_sent=email_sent)
+        raise
 
 
 def job_momentum():
     from strategies.momentum import run as momentum_run
     from emailer.sender import send_momentum_email
-    result = momentum_run()
-    if result:
-        send_momentum_email(
-            result["top30"],
-            result["changes"],
-            result["exits"],
-            result["week_start"],
-        )
+    from db.scheduler_log import log_run
+    started = datetime.now(IST)
+    result, email_sent = {}, False
+    try:
+        result = momentum_run() or {}
+        if result:
+            email_sent = send_momentum_email(
+                result["top30"],
+                result["changes"],
+                result["exits"],
+                result["week_start"],
+            )
+        count = len(result.get("top30", []))
+        log_run("momentum_weekly", "Weekly Momentum Portfolio", "success",
+                started, datetime.now(IST),
+                num_signals=count, email_sent=email_sent)
+    except Exception as e:
+        logger.exception("job_momentum failed")
+        log_run("momentum_weekly", "Weekly Momentum Portfolio", "failure",
+                started, datetime.now(IST), error_msg=str(e), email_sent=email_sent)
+        raise
 
 
 def build_scheduler() -> BlockingScheduler:

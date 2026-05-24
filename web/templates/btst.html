@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}BTST Signals — NSE Momentum{% endblock %}
+
+{% block content %}
+<h4 class="mb-4">BTST Signals <small class="text-muted fs-6">(last 30 days)</small></h4>
+
+{% if not signals %}
+  <div class="alert alert-secondary">No BTST signals in the last 30 days.</div>
+{% else %}
+  {% set ns = namespace(last_date=None) %}
+  {% for sig in signals %}
+    {% if sig.date != ns.last_date %}
+      {% set ns.last_date = sig.date %}
+      {% if not loop.first %}</tbody></table>{% endif %}
+      <h6 class="mt-4 mb-2">{{ sig.date.strftime("%A, %d %b %Y") }}</h6>
+      <table class="table table-sm table-hover table-bordered align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Symbol</th>
+            <th>Change %</th>
+            <th>Vol Ratio</th>
+            <th>Close</th>
+            <th>Strike</th>
+            <th>Stop Loss</th>
+            <th>Next Day Result</th>
+          </tr>
+        </thead>
+        <tbody>
+    {% endif %}
+        <tr>
+          <td class="fw-semibold">{{ sig.symbol }}</td>
+          <td class="result-pos">+{{ "%.2f"|format(sig.price_change_pct) }}%</td>
+          <td>{{ "%.2f"|format(sig.volume_ratio) }}x</td>
+          <td>₹{{ "%.2f"|format(sig.close_price) }}</td>
+          <td>₹{{ "%.0f"|format(sig.suggested_strike) }}</td>
+          <td>₹{{ "%.2f"|format(sig.close_price * 0.98) }}</td>
+          <td>
+            {% if sig.result_next_day is not none %}
+              <span class="{% if sig.result_next_day >= 0 %}result-pos{% else %}result-neg{% endif %}">
+                {{ "%+.2f"|format(sig.result_next_day) }}%
+              </span>
+            {% else %}
+              <span class="text-muted">pending</span>
+            {% endif %}
+          </td>
+        </tr>
+  {% endfor %}
+  </tbody></table>
+{% endif %}
+{% endblock %}
