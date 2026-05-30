@@ -28,19 +28,21 @@ RATE_LIMIT_SLEEP = 0.35  # seconds between API calls to stay within limits
 
 def seed_stocks(universe):
     sql = """
-        INSERT INTO stocks (symbol, name, isin, sector, is_fo, is_nifty500)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO stocks (symbol, name, isin, sector, token, is_fo, is_nifty500)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (symbol) DO UPDATE SET
             name        = EXCLUDED.name,
             isin        = EXCLUDED.isin,
             sector      = EXCLUDED.sector,
+            token       = EXCLUDED.token,
             is_fo       = EXCLUDED.is_fo,
             is_nifty500 = EXCLUDED.is_nifty500
     """
     rows = [
         (
             r["symbol"], r.get("name"), r.get("isin"),
-            r.get("sector"), bool(r.get("is_fo")), True,
+            r.get("sector"), str(r["token"]) if r.get("token") else None,
+            bool(r.get("is_fo")), True,
         )
         for _, r in universe.iterrows()
     ]
