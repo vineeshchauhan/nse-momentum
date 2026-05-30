@@ -23,6 +23,57 @@ function fmtIV(v) {
   return (v !== null && v !== undefined) ? v.toFixed(2) + '%' : '—';
 }
 
+function funnelHtml(f, dateLabel) {
+  if (f.nifty_gate) {
+    return `<div class="alert alert-warning" style="max-width:520px">
+      <strong>Nifty gate triggered on ${dateLabel}</strong> — Nifty was down &gt;1%, screener skipped.
+    </div>`;
+  }
+  const d = f.detail || {};
+  function detailBadge(key, unit) {
+    const items = d[key];
+    if (!items || items.length === 0) return '';
+    const id = 'det_' + key;
+    let listHtml;
+    if (items.length > 0 && typeof items[0] === 'object') {
+      listHtml = items.map(x => `<span class="badge bg-secondary me-1 mb-1">${x.symbol} <small class="opacity-75">${x.value}${unit}</small></span>`).join('');
+    } else {
+      listHtml = items.map(x => `<span class="badge bg-secondary me-1 mb-1">${x}</span>`).join('');
+    }
+    return ` <button class="btn btn-link btn-sm p-0 ms-1 small" type="button"
+        data-bs-toggle="collapse" data-bs-target="#${id}" aria-expanded="false">
+        show ▾</button>
+      <div class="collapse mt-1" id="${id}">
+        <div class="p-2 bg-light rounded small" style="max-width:600px;line-height:2">${listHtml}</div>
+      </div>`;
+  }
+  const rows = [
+    ['F&O stocks scanned',       f.scanned,           '',                       '',           ''],
+    ['No price data',            f.no_price,          'text-muted',             'no_price',   ''],
+    ['Missing prev/vol data',    f.missing_data,      'text-muted',             'missing_data',''],
+    ['Price change &lt; 5%',     f.failed_price_chg,  'text-warning',           'failed_price_chg', '%'],
+    ['Volume ratio &lt; 1.5x',   f.failed_volume,     'text-warning',           'failed_volume', 'x'],
+    ['Close not near high',      f.failed_near_high,  'text-warning',           'failed_near_high', '%'],
+    ['Prior trend out of range', f.failed_trend,      'text-warning',           'failed_trend', '%'],
+    ['Prior ADR too high',       f.failed_adr,        'text-warning',           'failed_adr', '%'],
+    ['Passed all filters',       f.passed,            f.passed > 0 ? 'text-success fw-semibold' : 'text-danger fw-semibold', '', ''],
+  ];
+  const trs = rows.map(([label, val, cls, detKey, unit]) =>
+    `<tr>
+      <td>${label}</td>
+      <td class="text-end ${cls}" style="white-space:nowrap;min-width:40px">${val ?? '—'}</td>
+      <td class="ps-2">${detKey ? detailBadge(detKey, unit) : ''}</td>
+    </tr>`
+  ).join('');
+  return `
+    <div class="card border-secondary mb-3" style="max-width:680px">
+      <div class="card-header py-2 small fw-semibold">Filter Funnel — ${dateLabel}</div>
+      <table class="table table-sm mb-0">
+        <tbody>${trs}</tbody>
+      </table>
+    </div>`;
+}
+
 async function runNow() {
   const d = document.getElementById('runDate').value;
   const btn = document.getElementById('runBtn');
@@ -43,6 +94,7 @@ async function runNow() {
       status.innerHTML = '<span class="text-danger">&#10007; ' + data.error + '</span>';
     } else {
       status.innerHTML = '<span class="text-success">&#10003; ' + data.message + '</span>';
+      let html = data.funnel ? funnelHtml(data.funnel, d) : '';
       if (data.signals && data.signals.length > 0) {
         let rows = data.signals.map(s => `
           <tr>
@@ -56,8 +108,8 @@ async function runNow() {
             <td>${fmtIV(s.iv_current_month)}</td>
             <td>${fmtIV(s.iv_next_month)}</td>
           </tr>`).join('');
-        results.innerHTML = `
-          <h6 class="mb-2">Results for ${d}</h6>
+        html += `
+          <h6 class="mb-2 mt-3">Signals for ${d}</h6>
           <div class="table-responsive">
           <table class="table table-sm table-hover table-bordered align-middle">
             <thead class="table-dark">
@@ -71,6 +123,7 @@ async function runNow() {
           </table>
           </div>`;
       }
+      results.innerHTML = html;
     }
   } catch(e) {
     status.innerHTML = '<span class="text-danger">&#10007; Request failed</span>';
@@ -79,6 +132,49 @@ async function runNow() {
   btn.innerHTML = 'Run Now';
 }
 </script>
+
+<h4 class="mb-3 mt-2">Filter Funnel <small class="text-muted fs-6">(last 30 days)</small></h4>
+
+{% if not filter_stats %}
+  <div class="alert alert-secondary">No filter stats yet — run the screener to populate.</div>
+{% else %}
+  <div class="table-responsive mb-4">
+  <table class="table table-sm table-bordered align-middle" style="max-width:860px">
+    <thead class="table-dark">
+      <tr>
+        <th>Date</th>
+        <th class="text-end">Scanned</th>
+        <th class="text-end">No Price</th>
+        <th class="text-end">Missing Data</th>
+        <th class="text-end">Price &lt; 5%</th>
+        <th class="text-end">Vol &lt; 1.5x</th>
+        <th class="text-end">Not Near High</th>
+        <th class="text-end">Trend OOB</th>
+        <th class="text-end">ADR High</th>
+        <th class="text-end fw-bold">Passed</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for s in filter_stats %}
+      <tr>
+        <td>{{ s.date.strftime("%d %b %Y") }}</td>
+        <td class="text-end">{{ s.scanned }}</td>
+        <td class="text-end text-muted">{{ s.no_price }}</td>
+        <td class="text-end text-muted">{{ s.missing_data }}</td>
+        <td class="text-end">{{ s.failed_price_chg }}</td>
+        <td class="text-end">{{ s.failed_volume }}</td>
+        <td class="text-end">{{ s.failed_near_high }}</td>
+        <td class="text-end">{{ s.failed_trend }}</td>
+        <td class="text-end">{{ s.failed_adr }}</td>
+        <td class="text-end fw-semibold {% if s.passed > 0 %}text-success{% else %}text-danger{% endif %}">
+          {{ s.passed }}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% endif %}
 
 <h4 class="mb-4">BTST Signals <small class="text-muted fs-6">(last 30 days)</small></h4>
 

@@ -40,7 +40,7 @@ def job_btst():
     started = datetime.now(IST)
     signals, email_sent = [], False
     try:
-        signals = btst_run() or []
+        signals, _ = btst_run()
         if signals:
             email_sent = send_btst_email(signals)
         else:

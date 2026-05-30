@@ -76,6 +76,19 @@ def create_tables():
 
     CREATE INDEX IF NOT EXISTS idx_scheduler_runs_started
         ON scheduler_runs(started_at DESC);
+
+    CREATE TABLE IF NOT EXISTS btst_filter_stats (
+        date              DATE PRIMARY KEY,
+        scanned           INTEGER,
+        no_price          INTEGER,
+        missing_data      INTEGER,
+        failed_price_chg  INTEGER,
+        failed_volume     INTEGER,
+        failed_near_high  INTEGER,
+        failed_trend      INTEGER,
+        failed_adr        INTEGER,
+        passed            INTEGER
+    );
     """
     with get_cursor(commit=True) as cur:
         cur.execute(ddl)

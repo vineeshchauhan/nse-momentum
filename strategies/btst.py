@@ -187,6 +187,33 @@ def get_prior_5d_stats(symbol: str, as_of: date = None) -> Optional[dict]:
     return {"net_move_pct": net_move_pct, "adr_pct": adr_pct}
 
 
+def _save_filter_stats(funnel: dict, target_date: date = None):
+    target_date = target_date or date.today()
+    sql = """
+        INSERT INTO btst_filter_stats
+            (date, scanned, no_price, missing_data, failed_price_chg,
+             failed_volume, failed_near_high, failed_trend, failed_adr, passed)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (date) DO UPDATE SET
+            scanned          = EXCLUDED.scanned,
+            no_price         = EXCLUDED.no_price,
+            missing_data     = EXCLUDED.missing_data,
+            failed_price_chg = EXCLUDED.failed_price_chg,
+            failed_volume    = EXCLUDED.failed_volume,
+            failed_near_high = EXCLUDED.failed_near_high,
+            failed_trend     = EXCLUDED.failed_trend,
+            failed_adr       = EXCLUDED.failed_adr,
+            passed           = EXCLUDED.passed
+    """
+    with get_cursor(commit=True) as cur:
+        cur.execute(sql, (
+            target_date,
+            funnel["scanned"], funnel["no_price"], funnel["missing_data"],
+            funnel["failed_price_chg"], funnel["failed_volume"], funnel["failed_near_high"],
+            funnel["failed_trend"], funnel["failed_adr"], funnel["passed"],
+        ))
+
+
 def save_signals(signals: list, target_date: date = None):
     target_date = target_date or date.today()
     sql = """
@@ -223,7 +250,9 @@ def run(target_date: date = None) -> list:
     logger.info(f"Nifty change on {target_date}: {nifty_chg:.2f}%")
     if nifty_chg <= BTST_NIFTY_DOWN_THRESHOLD:
         logger.warning(f"Nifty is down {nifty_chg:.2f}% — skipping BTST screen.")
-        return []
+        return [], {"nifty_gate": True, "scanned": 0, "no_price": 0, "missing_data": 0,
+                    "failed_price_chg": 0, "failed_volume": 0, "failed_near_high": 0,
+                    "failed_trend": 0, "failed_adr": 0, "passed": 0}
 
     fo_stocks = get_fo_stocks()
     logger.info(f"Scanning {len(fo_stocks)} F&O stocks...")
@@ -231,32 +260,57 @@ def run(target_date: date = None) -> list:
     current_prices = get_current_prices(client, fo_stocks, target_date)
 
     signals = []
+    f_no_price = f_missing = f_price = f_volume = f_near_high = f_trend = f_adr = 0
+    s_no_price: list = []
+    s_missing:  list = []
+    s_price:    list = []
+    s_volume:   list = []
+    s_near_high: list = []
+    s_trend:    list = []
+    s_adr:      list = []
+
     for symbol in fo_stocks:
         if symbol not in current_prices:
+            f_no_price += 1
+            s_no_price.append(symbol)
             continue
         close, volume, high = current_prices[symbol]
         prev_close = get_previous_close(symbol, as_of=target_date)
         avg_vol    = get_20d_avg_volume(symbol, as_of=target_date)
 
         if prev_close is None or avg_vol is None or avg_vol == 0:
+            f_missing += 1
+            s_missing.append(symbol)
             continue
 
         price_chg_pct = (close - prev_close) / prev_close * 100
         vol_ratio     = volume / avg_vol
 
         if price_chg_pct < BTST_MIN_PRICE_CHANGE_PCT:
+            f_price += 1
+            s_price.append({"symbol": symbol, "value": round(price_chg_pct, 2)})
             continue
         if vol_ratio < BTST_MIN_VOLUME_RATIO:
+            f_volume += 1
+            s_volume.append({"symbol": symbol, "value": round(vol_ratio, 2)})
             continue
         if high > 0 and close < BTST_CLOSE_NEAR_HIGH_PCT * high:
+            f_near_high += 1
+            s_near_high.append({"symbol": symbol, "value": round(close / high * 100, 1)})
             continue
 
         prior = get_prior_5d_stats(symbol, as_of=target_date)
         if prior is None:
+            f_missing += 1
+            s_missing.append(symbol)
             continue
         if not (BTST_PRIOR_TREND_MIN_PCT <= prior["net_move_pct"] <= BTST_PRIOR_TREND_MAX_PCT):
+            f_trend += 1
+            s_trend.append({"symbol": symbol, "value": round(prior["net_move_pct"], 2)})
             continue
         if prior["adr_pct"] >= BTST_PRIOR_ADR_MAX_PCT:
+            f_adr += 1
+            s_adr.append({"symbol": symbol, "value": round(prior["adr_pct"], 2)})
             continue
 
         signals.append({
@@ -270,6 +324,35 @@ def run(target_date: date = None) -> list:
 
     # Sort by volume ratio descending
     signals.sort(key=lambda x: x["volume_ratio"], reverse=True)
+
+    funnel = {
+        "scanned":          len(fo_stocks),
+        "no_price":         f_no_price,
+        "missing_data":     f_missing,
+        "failed_price_chg": f_price,
+        "failed_volume":    f_volume,
+        "failed_near_high": f_near_high,
+        "failed_trend":     f_trend,
+        "failed_adr":       f_adr,
+        "passed":           len(signals),
+        # per-stock detail (not persisted to DB)
+        "detail": {
+            "no_price":         s_no_price,
+            "missing_data":     s_missing,
+            "failed_price_chg": s_price,
+            "failed_volume":    s_volume,
+            "failed_near_high": s_near_high,
+            "failed_trend":     s_trend,
+            "failed_adr":       s_adr,
+        },
+    }
+    logger.info(
+        "BTST funnel: scanned=%d no_price=%d missing=%d price=%d vol=%d near_high=%d trend=%d adr=%d passed=%d",
+        funnel["scanned"], funnel["no_price"], funnel["missing_data"],
+        funnel["failed_price_chg"], funnel["failed_volume"], funnel["failed_near_high"],
+        funnel["failed_trend"], funnel["failed_adr"], funnel["passed"],
+    )
+    _save_filter_stats(funnel, target_date)
 
     if signals:
         save_signals(signals, target_date)
@@ -304,12 +387,12 @@ def run(target_date: date = None) -> list:
                 sig["iv_next_month"] = None
 
     logger.info("=== BTST Screener completed ===")
-    return signals
+    return signals, funnel
 
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     from emailer.sender import send_btst_email
-    sigs = run()
+    sigs, _ = run()
     if sigs:
         send_btst_email(sigs)

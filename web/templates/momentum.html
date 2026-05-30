@@ -49,27 +49,40 @@ async function runNow() {
 {% else %}
   <p class="text-muted mb-3">Week of {{ weeks[0].strftime("%d %b %Y") }}</p>
 
-  <table class="table table-sm table-hover table-bordered align-middle">
+  <div class="table-responsive">
+  <table class="table table-sm table-hover table-bordered align-middle" style="table-layout:fixed;min-width:860px">
+    <colgroup>
+      <col style="width:40px">
+      <col style="width:160px">
+      <col style="width:260px">
+      <col style="width:120px">
+      <col style="width:100px">
+      <col style="width:100px">
+      <col style="width:80px">
+      <col style="width:80px">
+    </colgroup>
     <thead class="table-dark">
       <tr>
         <th>#</th>
         <th>Symbol</th>
+        <th>Name</th>
         <th>Sector</th>
-        <th>Momentum 1M</th>
-        <th>Entry Price</th>
-        <th>Change</th>
-        <th>Prev Rank</th>
+        <th class="text-end">Momentum 1M</th>
+        <th class="text-end">Entry Price</th>
+        <th class="text-center">Change</th>
+        <th class="text-center">Prev Rank</th>
       </tr>
     </thead>
     <tbody>
       {% for row in current %}
         <tr class="{% if row.change_type == 'NEW ENTRY' %}row-entry{% elif row.change_type == 'EXIT' %}row-exit{% endif %}">
           <td>{{ row.rank }}</td>
-          <td class="fw-semibold">{{ row.symbol }}</td>
-          <td class="small text-muted">{{ row.sector or "—" }}</td>
-          <td class="result-pos">{{ "%.2f"|format(row.momentum_1m) }}%</td>
-          <td>₹{{ "%.2f"|format(row.entry_price) }}</td>
-          <td>
+          <td class="fw-semibold text-truncate">{{ row.symbol }}</td>
+          <td class="small text-truncate" title="{{ row.name or '' }}">{{ row.name or "—" }}</td>
+          <td class="small text-muted text-truncate" title="{{ row.sector or '' }}">{{ row.sector or "—" }}</td>
+          <td class="text-end result-pos">{{ "%.2f"|format(row.momentum_1m) }}%</td>
+          <td class="text-end">₹{{ "%.2f"|format(row.entry_price) }}</td>
+          <td class="text-center">
             {% if row.change_type == "NEW ENTRY" %}
               <span class="badge bg-success">New Entry</span>
             {% elif row.change_type == "EXIT" %}
@@ -78,11 +91,12 @@ async function runNow() {
               <span class="text-muted small">Cont.</span>
             {% endif %}
           </td>
-          <td class="text-muted">{{ row.rank_previous or "—" }}</td>
+          <td class="text-center text-muted">{{ row.rank_previous or "—" }}</td>
         </tr>
       {% endfor %}
     </tbody>
   </table>
+  </div>
 
   {% if history %}
   <h5 class="mt-5 mb-3">Previous Weeks</h5>
@@ -100,22 +114,38 @@ async function runNow() {
       <div id="hist{{ loop.index }}" class="accordion-collapse collapse"
            data-bs-parent="#histAccordion">
         <div class="accordion-body p-0">
-          <table class="table table-sm table-bordered mb-0">
+          <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0" style="table-layout:fixed;min-width:820px">
+            <colgroup>
+              <col style="width:40px">
+              <col style="width:160px">
+              <col style="width:260px">
+              <col style="width:120px">
+              <col style="width:100px">
+              <col style="width:100px">
+              <col style="width:80px">
+            </colgroup>
             <thead class="table-secondary">
               <tr>
-                <th>#</th><th>Symbol</th><th>Sector</th>
-                <th>Momentum 1M</th><th>Entry Price</th><th>Change</th>
+                <th>#</th>
+                <th>Symbol</th>
+                <th>Name</th>
+                <th>Sector</th>
+                <th class="text-end">Momentum 1M</th>
+                <th class="text-end">Entry Price</th>
+                <th class="text-center">Change</th>
               </tr>
             </thead>
             <tbody>
               {% for row in rows %}
               <tr class="{% if row.change_type == 'NEW ENTRY' %}row-entry{% elif row.change_type == 'EXIT' %}row-exit{% endif %}">
                 <td>{{ row.rank }}</td>
-                <td class="fw-semibold">{{ row.symbol }}</td>
-                <td class="small text-muted">{{ row.sector or "—" }}</td>
-                <td>{{ "%.2f"|format(row.momentum_1m) }}%</td>
-                <td>₹{{ "%.2f"|format(row.entry_price) }}</td>
-                <td>
+                <td class="fw-semibold text-truncate">{{ row.symbol }}</td>
+                <td class="small text-truncate" title="{{ row.name or '' }}">{{ row.name or "—" }}</td>
+                <td class="small text-muted text-truncate" title="{{ row.sector or '' }}">{{ row.sector or "—" }}</td>
+                <td class="text-end">{{ "%.2f"|format(row.momentum_1m) }}%</td>
+                <td class="text-end">₹{{ "%.2f"|format(row.entry_price) }}</td>
+                <td class="text-center">
                   {% if row.change_type == "NEW ENTRY" %}
                     <span class="badge bg-success">New Entry</span>
                   {% elif row.change_type == "EXIT" %}
@@ -128,6 +158,7 @@ async function runNow() {
               {% endfor %}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

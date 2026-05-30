@@ -40,7 +40,9 @@ def create_app():
     @app.route("/btst")
     def btst():
         signals = queries.get_btst_signals(days=30)
-        return render_template("btst.html", signals=signals, today=date.today().isoformat())
+        filter_stats = queries.get_btst_filter_stats(days=30)
+        return render_template("btst.html", signals=signals,
+                               filter_stats=filter_stats, today=date.today().isoformat())
 
     @app.route("/momentum")
     def momentum():
@@ -63,7 +65,7 @@ def create_app():
         try:
             from strategies.btst import run as btst_run
             from emailer.sender import send_btst_email
-            signals = btst_run(target_date=target)
+            signals, funnel = btst_run(target_date=target)
             email_sent = send_btst_email(signals) if signals else False
             logger.info(
                 "Manual BTST complete: %d signal(s), email_sent=%s",
@@ -86,6 +88,7 @@ def create_app():
             return jsonify({
                 "ok":        True,
                 "signals":   sig_data,
+                "funnel":    funnel,
                 "email_sent": email_sent,
                 "message":   f"{len(signals)} signal(s) found for {target.isoformat()}. "
                              + ("Email sent." if email_sent else "No email sent."),

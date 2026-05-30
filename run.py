@@ -74,7 +74,7 @@ def main():
     elif args.task == "btst":
         from strategies.btst import run as btst_run
         from emailer.sender import send_btst_email
-        signals = btst_run(target_date=args.date)
+        signals, _ = btst_run(target_date=args.date)
         if not signals:
             log.info("No BTST signals — email not sent.")
         elif args.no_email:

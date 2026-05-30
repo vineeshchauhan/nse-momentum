@@ -27,6 +27,18 @@ def get_btst_signals(days=30):
         return cur.fetchall()
 
 
+def get_btst_filter_stats(days=30):
+    with get_cursor() as cur:
+        cur.execute("""
+            SELECT date, scanned, no_price, missing_data, failed_price_chg,
+                   failed_volume, failed_near_high, failed_trend, failed_adr, passed
+            FROM btst_filter_stats
+            WHERE date >= CURRENT_DATE - %s
+            ORDER BY date DESC
+        """, (days,))
+        return cur.fetchall()
+
+
 def get_momentum_weeks():
     with get_cursor() as cur:
         cur.execute("""
@@ -39,7 +51,7 @@ def get_momentum_weeks():
 def get_momentum_portfolio(week_start):
     with get_cursor() as cur:
         cur.execute("""
-            SELECT mp.rank, mp.symbol, mp.momentum_1m, mp.entry_price,
+            SELECT mp.rank, mp.symbol, s.name, mp.momentum_1m, mp.entry_price,
                    mc.change_type, mc.rank_previous, s.sector
             FROM momentum_portfolio mp
             LEFT JOIN momentum_changes mc

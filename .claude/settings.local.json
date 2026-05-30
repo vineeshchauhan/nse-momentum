@@ -13,7 +13,8 @@
       "Bash(docker exec *)",
       "Bash(curl -s http://168.144.31.99:5000/btst)",
       "Bash(docker compose up *)",
-      "Bash(python3 -m py_compile logging_config.py main.py run.py web/app.py db/models.py db/connection.py data_pipeline/angel_client.py data_pipeline/nse_universe.py data_pipeline/daily_batch.py strategies/btst.py strategies/momentum.py)"
+      "Bash(python3 -m py_compile logging_config.py main.py run.py web/app.py db/models.py db/connection.py data_pipeline/angel_client.py data_pipeline/nse_universe.py data_pipeline/daily_batch.py strategies/btst.py strategies/momentum.py)",
+      "Bash(python3 *)"
     ]
   }
 }
