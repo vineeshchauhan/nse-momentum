@@ -12,9 +12,12 @@ def create_tables():
         name        VARCHAR(200),
         isin        VARCHAR(12),
         sector      VARCHAR(100),
+        token       VARCHAR(20),
         is_fo       BOOLEAN DEFAULT FALSE,
         is_nifty500 BOOLEAN DEFAULT TRUE
     );
+    -- migration: no-op if column already exists (idempotent on existing DBs)
+    ALTER TABLE stocks ADD COLUMN IF NOT EXISTS token VARCHAR(20);
 
     CREATE TABLE IF NOT EXISTS ohlcv (
         symbol  VARCHAR(20)    NOT NULL,

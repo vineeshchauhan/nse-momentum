@@ -12,7 +12,8 @@ from data_pipeline.nse_universe import build_universe
 from db.connection import get_cursor
 
 logger = logging.getLogger(__name__)
-RATE_LIMIT_SLEEP = 0.35  # seconds between Angel API calls
+RATE_LIMIT_SLEEP = 0.5   # seconds between Angel API calls
+_RATE_LIMIT_MARKER = "access rate"  # substring in Angel One rate-limit error messages
 
 
 def replace_ohlcv(rows: list, target_date: date, symbol: str = None):
@@ -42,15 +43,27 @@ def fetch_ohlcv_for_date(client: AngelClient, token: str, symbol: str, target_da
     from_dt = (target_date - timedelta(days=1)).strftime("%Y-%m-%d") + " 09:00"
     to_dt   = (target_date + timedelta(days=1)).strftime("%Y-%m-%d") + " 15:35"
     target_str = target_date.strftime("%Y-%m-%d")
-    try:
-        candles = client.get_candle_data(token, "NSE", "ONE_DAY", from_dt, to_dt)
-        for c in candles:
-            if str(c[0])[:10] == target_str:
-                return (symbol, target_date, float(c[1]), float(c[2]), float(c[3]), float(c[4]), int(c[5]))
-        return None
-    except Exception as e:
-        logger.warning(f"Failed OHLCV fetch for {symbol}: {e}")
-        return None
+
+    backoff = 5  # seconds; doubles on each rate-limit hit
+    for attempt in range(4):
+        try:
+            candles = client.get_candle_data(token, "NSE", "ONE_DAY", from_dt, to_dt)
+            for c in candles:
+                if str(c[0])[:10] == target_str:
+                    return (symbol, target_date, float(c[1]), float(c[2]),
+                            float(c[3]), float(c[4]), int(c[5]))
+            return None
+        except Exception as e:
+            msg = str(e).lower()
+            if _RATE_LIMIT_MARKER in msg:
+                logger.warning("Rate limited on %s (attempt %d) — sleeping %ds", symbol, attempt + 1, backoff)
+                time.sleep(backoff)
+                backoff *= 2
+            else:
+                logger.warning("Failed OHLCV fetch for %s: %s", symbol, e)
+                return None
+    logger.error("Giving up on %s after 4 rate-limit retries", symbol)
+    return None
 
 
 def update_btst_results(result_date: date, signal_date: date):
@@ -92,6 +105,23 @@ def update_btst_results(result_date: date, signal_date: date):
         logger.info(f"Updated result_next_day for {len(updates)} BTST signals.")
 
 
+def refresh_tokens(universe) -> None:
+    """Upsert Angel One tokens into the stocks table so BTST live-price lookups work."""
+    rows = [
+        (str(row["token"]), row["symbol"])
+        for _, row in universe.iterrows()
+        if row.get("token")
+    ]
+    if not rows:
+        return
+    with get_cursor(commit=True) as cur:
+        cur.executemany(
+            "UPDATE stocks SET token = %s WHERE symbol = %s",
+            rows,
+        )
+    logger.info("Refreshed tokens for %d stocks.", len(rows))
+
+
 def run(target_date: date = None, symbol: str = None):
     target_date = target_date or date.today()
     signal_date = target_date - timedelta(days=1)
@@ -102,6 +132,7 @@ def run(target_date: date = None, symbol: str = None):
 
     universe = build_universe()
     universe = universe.dropna(subset=["token"])
+    refresh_tokens(universe)
     if symbol:
         universe = universe[universe["symbol"] == symbol.upper()]
         if universe.empty:
