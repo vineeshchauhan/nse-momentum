@@ -39,6 +39,18 @@ def get_btst_filter_stats(days=30):
         return cur.fetchall()
 
 
+def get_btst_filter_detail(date_str, stage):
+    with get_cursor() as cur:
+        cur.execute("""
+            SELECT fd.symbol, s.name, fd.value
+            FROM btst_filter_detail fd
+            LEFT JOIN stocks s ON s.symbol = fd.symbol
+            WHERE fd.date = %s AND fd.filter_stage = %s
+            ORDER BY fd.value DESC NULLS LAST
+        """, (date_str, stage))
+        return cur.fetchall()
+
+
 def get_momentum_weeks():
     with get_cursor() as cur:
         cur.execute("""

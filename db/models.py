@@ -92,6 +92,17 @@ def create_tables():
         failed_adr        INTEGER,
         passed            INTEGER
     );
+
+    CREATE TABLE IF NOT EXISTS btst_filter_detail (
+        date         DATE         NOT NULL,
+        symbol       VARCHAR(20)  NOT NULL,
+        filter_stage VARCHAR(30)  NOT NULL,
+        value        NUMERIC(10,2),
+        PRIMARY KEY (date, symbol)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_btst_filter_detail_date
+        ON btst_filter_detail(date);
     """
     with get_cursor(commit=True) as cur:
         cur.execute(ddl)

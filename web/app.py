@@ -97,6 +97,15 @@ def create_app():
             logger.exception("Manual BTST run failed for %s", target.isoformat())
             return jsonify({"ok": False, "error": str(e)}), 500
 
+    @app.route("/api/btst/filter-detail")
+    def btst_filter_detail():
+        date_str = request.args.get("date", "")
+        stage    = request.args.get("stage", "")
+        if not date_str or not stage:
+            return jsonify({"ok": False, "error": "date and stage required"}), 400
+        rows = queries.get_btst_filter_detail(date_str, stage)
+        return jsonify({"ok": True, "rows": [dict(r) for r in rows]})
+
     @app.route("/run/momentum", methods=["POST"])
     def run_momentum():
         payload = request.get_json(silent=True) or {}

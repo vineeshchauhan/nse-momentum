@@ -23,6 +23,14 @@ function fmtIV(v) {
   return (v !== null && v !== undefined) ? v.toFixed(2) + '%' : '—';
 }
 
+function toggleFunnelDetail(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const showing = el.style.display !== 'none';
+  el.style.display = showing ? 'none' : 'block';
+  btn.textContent = showing ? 'show ▾' : 'hide ▲';
+}
+
 function funnelHtml(f, dateLabel) {
   if (f.nifty_gate) {
     return `<div class="alert alert-warning" style="max-width:520px">
@@ -41,9 +49,9 @@ function funnelHtml(f, dateLabel) {
       listHtml = items.map(x => `<span class="badge bg-secondary me-1 mb-1">${x}</span>`).join('');
     }
     return ` <button class="btn btn-link btn-sm p-0 ms-1 small" type="button"
-        data-bs-toggle="collapse" data-bs-target="#${id}" aria-expanded="false">
+        onclick="toggleFunnelDetail('${id}', this)">
         show ▾</button>
-      <div class="collapse mt-1" id="${id}">
+      <div style="display:none" id="${id}">
         <div class="p-2 bg-light rounded small" style="max-width:600px;line-height:2">${listHtml}</div>
       </div>`;
   }
@@ -133,6 +141,100 @@ async function runNow() {
 }
 </script>
 
+<!-- Filter detail modal -->
+<div class="modal fade" id="filterDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title mb-0" id="filterDetailTitle"></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+          onclick="hideModal(document.getElementById('filterDetailModal'))"></button>
+      </div>
+      <div class="modal-body p-2" id="filterDetailBody">
+        <div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STAGE_LABELS = {
+  no_price:         {label: 'No Price Data',           unit: null},
+  missing_data:     {label: 'Missing Prev/Vol Data',   unit: null},
+  failed_price_chg: {label: 'Price Change < 5%',       unit: '%'},
+  failed_volume:    {label: 'Volume Ratio < 1.5x',     unit: 'x'},
+  failed_near_high: {label: 'Close Not Near High',     unit: '%'},
+  failed_trend:     {label: 'Prior Trend Out of Range',unit: '%'},
+  failed_adr:       {label: 'Prior ADR Too High',      unit: '%'},
+};
+
+function showModal(el) {
+  if (typeof bootstrap !== 'undefined') {
+    bootstrap.Modal.getOrCreateInstance(el).show();
+  } else {
+    el.style.display = 'block';
+    el.classList.add('show');
+    document.body.classList.add('modal-open');
+    if (!document.getElementById('_modal_backdrop')) {
+      const bd = document.createElement('div');
+      bd.className = 'modal-backdrop fade show';
+      bd.id = '_modal_backdrop';
+      bd.onclick = () => hideModal(el);
+      document.body.appendChild(bd);
+    }
+  }
+}
+
+function hideModal(el) {
+  if (typeof bootstrap !== 'undefined') {
+    bootstrap.Modal.getOrCreateInstance(el).hide();
+  } else {
+    el.style.display = 'none';
+    el.classList.remove('show');
+    document.body.classList.remove('modal-open');
+    const bd = document.getElementById('_modal_backdrop');
+    if (bd) bd.remove();
+  }
+}
+
+async function showFilterDetail(dateStr, stage) {
+  const info = STAGE_LABELS[stage] || {label: stage, unit: null};
+  document.getElementById('filterDetailTitle').textContent = info.label + ' — ' + dateStr;
+  document.getElementById('filterDetailBody').innerHTML =
+    '<div class="text-center py-3"><span class="spinner-border spinner-border-sm"></span></div>';
+  const modalEl = document.getElementById('filterDetailModal');
+  showModal(modalEl);
+
+  try {
+    const resp = await fetch(`/api/btst/filter-detail?date=${dateStr}&stage=${stage}`);
+    const data = await resp.json();
+    if (!data.ok || !data.rows.length) {
+      document.getElementById('filterDetailBody').innerHTML =
+        '<p class="text-muted p-2 mb-0">No stocks recorded for this filter stage.</p>';
+      return;
+    }
+    const hasValue = info.unit !== null;
+    const rows = data.rows.map(r => `
+      <tr>
+        <td class="fw-semibold">${r.symbol}</td>
+        <td class="text-muted small">${r.name || '—'}</td>
+        ${hasValue ? `<td class="text-end">${r.value !== null ? r.value + info.unit : '—'}</td>` : ''}
+      </tr>`).join('');
+    const valHeader = hasValue ? `<th class="text-end">Value</th>` : '';
+    document.getElementById('filterDetailBody').innerHTML = `
+      <div class="table-responsive">
+      <table class="table table-sm table-hover mb-0">
+        <thead class="table-dark"><tr><th>Symbol</th><th>Name</th>${valHeader}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>`;
+  } catch(e) {
+    document.getElementById('filterDetailBody').innerHTML =
+      '<p class="text-danger p-2 mb-0">Failed to load detail.</p>';
+  }
+}
+</script>
+
 <h4 class="mb-3 mt-2">Filter Funnel <small class="text-muted fs-6">(last 30 days)</small></h4>
 
 {% if not filter_stats %}
@@ -156,16 +258,31 @@ async function runNow() {
     </thead>
     <tbody>
     {% for s in filter_stats %}
+      {% set d = s.date.isoformat() %}
       <tr>
         <td>{{ s.date.strftime("%d %b %Y") }}</td>
         <td class="text-end">{{ s.scanned }}</td>
-        <td class="text-end text-muted">{{ s.no_price }}</td>
-        <td class="text-end text-muted">{{ s.missing_data }}</td>
-        <td class="text-end">{{ s.failed_price_chg }}</td>
-        <td class="text-end">{{ s.failed_volume }}</td>
-        <td class="text-end">{{ s.failed_near_high }}</td>
-        <td class="text-end">{{ s.failed_trend }}</td>
-        <td class="text-end">{{ s.failed_adr }}</td>
+        <td class="text-end text-muted">
+          {% if s.no_price %}<a href="#" class="text-muted link-underline-light" onclick="showFilterDetail('{{ d }}','no_price');return false">{{ s.no_price }}</a>{% else %}0{% endif %}
+        </td>
+        <td class="text-end text-muted">
+          {% if s.missing_data %}<a href="#" class="text-muted link-underline-light" onclick="showFilterDetail('{{ d }}','missing_data');return false">{{ s.missing_data }}</a>{% else %}0{% endif %}
+        </td>
+        <td class="text-end">
+          {% if s.failed_price_chg %}<a href="#" onclick="showFilterDetail('{{ d }}','failed_price_chg');return false">{{ s.failed_price_chg }}</a>{% else %}0{% endif %}
+        </td>
+        <td class="text-end">
+          {% if s.failed_volume %}<a href="#" onclick="showFilterDetail('{{ d }}','failed_volume');return false">{{ s.failed_volume }}</a>{% else %}0{% endif %}
+        </td>
+        <td class="text-end">
+          {% if s.failed_near_high %}<a href="#" onclick="showFilterDetail('{{ d }}','failed_near_high');return false">{{ s.failed_near_high }}</a>{% else %}0{% endif %}
+        </td>
+        <td class="text-end">
+          {% if s.failed_trend %}<a href="#" onclick="showFilterDetail('{{ d }}','failed_trend');return false">{{ s.failed_trend }}</a>{% else %}0{% endif %}
+        </td>
+        <td class="text-end">
+          {% if s.failed_adr %}<a href="#" onclick="showFilterDetail('{{ d }}','failed_adr');return false">{{ s.failed_adr }}</a>{% else %}0{% endif %}
+        </td>
         <td class="text-end fw-semibold {% if s.passed > 0 %}text-success{% else %}text-danger{% endif %}">
           {{ s.passed }}
         </td>

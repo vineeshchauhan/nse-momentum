@@ -214,6 +214,28 @@ def _save_filter_stats(funnel: dict, target_date: date = None):
         ))
 
 
+def _save_filter_detail(detail: dict, target_date: date = None):
+    target_date = target_date or date.today()
+    rows = []
+    for stage, entries in detail.items():
+        for entry in entries:
+            if isinstance(entry, dict):
+                rows.append((target_date, entry["symbol"], stage, entry.get("value")))
+            else:
+                rows.append((target_date, entry, stage, None))
+    if not rows:
+        return
+    sql = """
+        INSERT INTO btst_filter_detail (date, symbol, filter_stage, value)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (date, symbol) DO UPDATE SET
+            filter_stage = EXCLUDED.filter_stage,
+            value        = EXCLUDED.value
+    """
+    with get_cursor(commit=True) as cur:
+        cur.executemany(sql, rows)
+
+
 def save_signals(signals: list, target_date: date = None):
     target_date = target_date or date.today()
     sql = """
@@ -353,6 +375,7 @@ def run(target_date: date = None) -> list:
         funnel["failed_trend"], funnel["failed_adr"], funnel["passed"],
     )
     _save_filter_stats(funnel, target_date)
+    _save_filter_detail(funnel["detail"], target_date)
 
     if signals:
         save_signals(signals, target_date)
